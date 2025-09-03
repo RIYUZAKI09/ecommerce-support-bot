@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ShopEase AI Support Assistant</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0, #764ba2 100%);
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .container { background: #fff; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); width: 100%; max-width: 450px; height: 650px; display: flex; flex-direction: column; overflow: hidden;}
+    .header { background: linear-gradient(135deg, #667eea 0, #764ba2 100%); padding: 20px; color: #fff; display: flex; align-items: center; gap: 15px; }
+    .bot-avatar { width: 45px; height: 45px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+    .header-info h1 { font-size: 18px; font-weight: 600;}
+    .header-info p { font-size: 12px; opacity: 0.9;}
+    .quick-actions { padding: 15px 15px 0 15px; background: #eef0fb;}
+    .action-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px;}
+    .action-btn { padding: 7px 12px; border-radius: 8px; font-size: 13px; background: #667eea; color: #fff; border: none; cursor: pointer;}
+    .chat-area { flex: 1; padding: 15px 15px 0 15px; overflow-y: auto;}
+    .message { display: flex; align-items: flex-start; margin-bottom: 15px;}
+    .message.user .message-avatar { background: #eef0fb; color:#333;}
+    .message.bot .message-avatar { background: #667eea; color:#fff;}
+    .message-avatar { min-width:30px; min-height:30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 10px; font-size: 18px;}
+    .message-content {background: #eef0fb; border-radius: 10px; padding: 8px 12px; max-width: 70%; font-size: 15px;}
+    .message.user .message-content {background:#dcf2ff;}
+    .input-area { display: flex; align-items: center; padding: 12px 15px; background: #eef0fb;}
+    .input-field {flex:1; padding: 7px 12px; border-radius: 8px; border: 1px solid #ccd;}
+    .send-btn { background: #667eea; color: #fff; border: none; border-radius: 8px; padding: 7px 12px; cursor: pointer; margin-left:7px;}
+    .toggle-metrics { margin: 10px 15px; padding: 5px 10px; background: #764ba2; color: #fff; border: none; border-radius: 7px; cursor: pointer; font-size:13px;}
+    .metrics-dashboard {display:none; position:absolute; top:30px; right:10px; background:#fff; padding:15px 20px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.1);}
+    .metrics-dashboard.active {display:block;}
+    .metric-item {display:flex; justify-content:space-between; margin-bottom:9px;}
+    .order-card {background:#fff; border-radius:12px; box-shadow:0 2px 6px rgba(102,126,234,0.07); padding:10px 14px; margin-top:8px;}
+    .order-status {font-size:13px; font-weight:600; border-radius:7px; padding:4px 9px; margin:5px 0; display:inline-block;}
+    .order-status.delivered {background:#c6f5db; color:#299c50;}
+    .order-status.pending {background:#ffe5b7; color:#b98c28;}
+    .order-status.cancelled {background:#ffb7b7; color:#a82c2c;}
+    .escalation-alert {background: #ffd1dc; color:#a82c2c; font-size:15px; margin:8px 0; border-radius:7px; padding:7px;}
+    .visually-hidden {position: absolute;clip: rect(1px, 1px, 1px, 1px);padding: 0;border: 0;height: 1px;width: 1px;overflow: hidden;}
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="bot-avatar" aria-label="AI bot">🤖</div>
+    <div class="header-info">
+      <h1>ShopEase Support</h1>
+      <p>AI-Powered Assistant Available 24/7</p>
+    </div>
+  </div>
+  <div class="quick-actions">
+    <h3>Quick Actions</h3>
+    <div class="action-buttons">
+      <button class="action-btn" onclick="sendQuickAction('Track my order')">Track Order</button>
+      <button class="action-btn" onclick="sendQuickAction('Return an item')">Returns</button>
+      <button class="action-btn" onclick="sendQuickAction('Payment issue')">Payment</button>
+      <button class="action-btn" onclick="sendQuickAction('Product inquiry')">Products</button>
+    </div>
+  </div>
+  <div class="chat-area" id="chatArea">
+    <div class="message bot">
+      <div class="message-avatar" aria-label="Bot">🤖</div>
+      <div class="message-content">
+        Hello! I'm your AI shopping assistant.<br><br>
+        I can help you with:<br>
+        - Order tracking & delivery updates<br>
+        - Returns & refunds<br>
+        - Payment & billing questions<br>
+        - Product recommendations<br>
+        <br>
+        How can I assist you today?
+      </div>
+    </div>
+  </div>
+  <div class="input-area">
+    <label for="userInput" class="visually-hidden">Your message</label>
+    <input type="text" class="input-field" id="userInput" placeholder="Type your message here..." onkeypress="handleKeyPress(event)" aria-label="Message to bot" />
+    <button class="send-btn" onclick="sendMessage()" aria-label="Send message">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+      </svg>
+    </button>
+  </div>
+  <button class="toggle-metrics" onclick="toggleMetrics()">View Metrics</button>
+  <div class="metrics-dashboard" id="metricsDashboard" aria-live="polite">
+    <h3 style="margin-bottom:15px; font-size:16px;">Live Metrics</h3>
+    <div class="metric-item"><div class="metric-label">Total Conversations</div><div class="metric-value" id="totalConversations">1</div></div>
+    <div class="metric-item"><div class="metric-label">Messages Exchanged</div><div class="metric-value" id="messageCount">1</div></div>
+    <div class="metric-item"><div class="metric-label">Avg Response Time</div><div class="metric-value" id="avgResponseTime">0.8s</div></div>
+    <div class="metric-item"><div class="metric-label">Resolution Rate</div><div class="metric-value" id="resolutionRate">85</div></div>
+    <div class="metric-item"><div class="metric-label">Escalation Rate</div><div class="metric-value" id="escalationRate">15</div></div>
+  </div>
+</div>
+<script>
+  // --------- Test Data ----------
+  const testOrders = [
+    { id: "ORD-12345", product: "Wireless Earbuds", placed: "2025-08-28", status: "Delivered", expected: "2025-08-31" },
+    { id: "ORD-23456", product: "Bluetooth Speaker", placed: "2025-08-29", status: "Pending", expected: "2025-09-05" },
+    { id: "ORD-34567", product: "Smart Watch", placed: "2025-08-26", status: "Cancelled", expected: "" }
+  ];
+  const testProducts = [
+    { name: "Wireless Earbuds", sku: "SEB-001", stock: 32, price: 49.99 },
+    { name: "Bluetooth Speaker", sku: "SEB-002", stock: 12, price: 89.99 },
+    { name: "Smart Watch", sku: "SEB-003", stock: 0, price: 129.99 }
+  ];
+  const testPayments = [
+    { orderId: "ORD-12345", status: "Success", method: "Credit Card", date: "2025-08-29" },
+    { orderId: "ORD-23456", status: "Failed", method: "PayPal", date: "2025-08-30" }
+  ];
+  const testReturns = [
+    { orderId: "ORD-12345", status: "Return Completed", refund: "Processed" },
+    { orderId: "ORD-34567", status: "Return Denied", refund: "N/A" }
+  ];
+
+  // --------- Metrics ----------
+  let messageCount = 1;
+  let escalationCount = 0;
+  let resolutionCount = 0;
+
+  // --------- Session State (Intent) ---------
+  let currentIntent = null;
+  let contextData = {};
+
+  // --------- Bot Responses ----------
+  const responses = {
+    greeting: "Hello! How can I help you today?",
+    order: {
+      track: "I can help you track your order. Please type your order number (format ORD-XXXXX).",
+      status: "Let me check your order status. Please enter your order number.",
+      found: order => `<div class="order-card">
+        <h4>Order ${order.id}</h4>
+        <div>Product: ${order.product}</div>
+        <div>Placed: ${order.placed}</div>
+        <span class="order-status ${order.status.toLowerCase()}">${order.status}</span>
+        ${order.expected ? `<div>Expected delivery: ${order.expected}</div>` : ''}
+      </div>`,
+      general: "No matching order found. Please check your order number.",
+    },
+    returns: {
+      policy: "Returns allowed within 30 days of delivery. Items must be unused and in original packaging.",
+      process: "To start a return: Go to My Orders, select the item, click 'Return Item', choose reason & submit. To check a specific order, enter your order number.",
+      refund: ret => ret
+        ? `Return Status: ${ret.status}, Refund: ${ret.refund}`
+        : "No return info found for this order."
+    },
+    payment: {
+      methods: "We accept Credit/Debit cards, Digital wallets, PayPal, and Gift cards.",
+      failed: pay => pay
+        ? `Payment for order ${pay.orderId} (${pay.method}) failed on ${pay.date}. Try another method or check details.`
+        : "No failed payments found for this order.",
+      security: "All transactions are encrypted and PCI-DSS compliant."
+    },
+    product: {
+      search: "Tell me what you're looking for (name, sku, budget), and I'll suggest options.",
+      recommendations: () => {
+        let recs = testProducts.slice(0,2).map(p => `<div>${p.name} ($${p.price}) - Stock: ${p.stock}</div>`).join('');
+        return `Popular items:<br>${recs}`;
+      },
+      availability: prod => prod 
+        ? `Product: ${prod.name}. SKU: ${prod.sku}. Price: $${prod.price}. Stock: ${prod.stock > 0 ? prod.stock + ' available.' : 'Out of stock.'}`
+        : "Product not found. Please check the name or SKU.",
+    },
+    escalation: {
+      trigger: "This might need special attention. Connecting you to a human agent...",
+      alert: '<div class="escalation-alert">Connecting to human agent... Estimated wait 2-3 minutes</div>'
+    }
+  };
+
+  // --------- Intent Detection ---------
+  function detectIntent(message) {
+    const lower = message.toLowerCase();
+    if (lower.includes('track')) return 'orderTrack';
+    if (lower.includes('status')) return 'orderStatus';
+    if (/ord-\d{5}/i.test(lower)) return 'orderLookup';
+    if (lower.includes('return')) return 'returnsPolicy';
+    if (lower.includes('refund')) return 'returnsRefund';
+    if (lower.includes('exchange')) return 'returnsProcess';
+    if (lower.includes('payment')) return 'paymentMethods';
+    if (lower.includes('fail') || lower.includes('error')) return 'paymentFailed';
+    if (lower.includes('secure')) return 'paymentSecurity';
+    if (lower.includes('product')) return 'productSearch';
+    if (lower.includes('recommend')) return 'productRecommendations';
+    if (lower.includes('available') || lower.includes('stock')) return 'productAvailability';
+    if (lower.includes('human') || lower.includes('agent') || lower.includes('escalate')) return 'escalation';
+    return 'greeting';
+  }
+
+  // --------- Response Generator with Context ---------
+  function generateResponse(intent, message) {
+    switch(intent) {
+      case 'orderTrack':
+        currentIntent = 'orderLookup';
+        return responses.order.track;
+      case 'orderStatus':
+        currentIntent = 'orderLookup';
+        return responses.order.status;
+      case 'orderLookup':
+        currentIntent = null;
+        const match = message.match(/ord-\d{5}/i);
+        if (match) {
+          const foundOrder = testOrders.find(o => o.id === match.toUpperCase());
+          resolutionCount++;
+          return foundOrder
+            ? responses.order.found(foundOrder)
+            : responses.order.general;
+        }
+        return "Please provide your order number in format ORD-XXXXX.";
+      case 'returnsPolicy':
+        currentIntent = 'returnsProcess';
+        return responses.returns.policy + " To check status, enter your order number.";
+      case 'returnsProcess':
+        currentIntent = 'returnsRefund';
+        return responses.returns.process + " For refund details, provide order number.";
+      case 'returnsRefund':
+        currentIntent = null;
+        const retOrderId = (message.match(/ord-\d{5}/i) || []);
+        if (retOrderId) {
+          const ret = testReturns.find(r => r.orderId === retOrderId.toUpperCase());
+          return responses.returns.refund(ret);
+        }
+        return 'Please provide your order number for refund status.';
+      case 'paymentMethods':
+        currentIntent = 'paymentFailed';
+        return responses.payment.methods + " If you had a failed payment, provide your order number.";
+      case 'paymentFailed':
+        currentIntent = null;
+        const payOrderId = (message.match(/ord-\d{5}/i) || []);
+        if (payOrderId) {
+          const pay = testPayments.find(p => p.orderId === payOrderId.toUpperCase() && p.status === "Failed");
+          return responses.payment.failed(pay);
+        }
+        return "Provide an order number to check payment issues.";
+      case 'paymentSecurity':
+        currentIntent = null;
+        return responses.payment.security;
+      case 'productSearch':
+        currentIntent = 'productAvailability';
+        return responses.product.search + " Example: Wireless Earbuds, SKU SEB-001";
+      case 'productRecommendations':
+        currentIntent = null;
+        return responses.product.recommendations();
+      case 'productAvailability':
+        currentIntent = null;
+        let prodName = message.replace(/available|stock|is|of|the|product|:/ig, '').trim();
+        let prod = testProducts.find(p =>
+          p.name.toLowerCase() === prodName.toLowerCase() ||
+          p.sku.toLowerCase() === prodName.toLowerCase()
+        );
+        return responses.product.availability(prod);
+      case 'escalation':
+        currentIntent = null;
+        escalationCount++;
+        updateMetrics();
+        return responses.escalation.trigger + responses.escalation.alert;
+      default:
+        currentIntent = null;
+        return "I'm here to help! Ask about orders, returns, payments, or products.";
+    }
+  }
+
+  // --------- Message Flow with Context Handling ---------
+  function sendMessage() {
+    const input = document.getElementById('userInput');
+    const message = input.value.trim();
+    if (!message) return;
+    addMessage(message, 'user');
+    input.value = "";
+    showTyping();
+    setTimeout(() => {
+      hideTyping();
+      let intent = detectIntent(message);
+      // If currentIntent is set and the user message doesn't trigger a new intent, use it
+      if (!['greeting', 'orderTrack', 'orderStatus', 'returnsPolicy', 'returnsProcess', 'paymentMethods', 'productSearch'].includes(intent) && currentIntent) {
+        intent = currentIntent;
+        currentIntent = null;
+      }
+      const response = generateResponse(intent, message);
+      addMessage(response, 'bot');
+      updateMetrics();
+    }, 800 + Math.random() * 500);
+  }
+
+  function sendQuickAction(action) {
+    document.getElementById('userInput').value = action;
+    sendMessage();
+  }
+
+  function addMessage(content, sender) {
+    const chatArea = document.getElementById('chatArea');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${sender}`;
+    const avatar = document.createElement('div');
+    avatar.className = 'message-avatar';
+    avatar.textContent = sender === 'bot' ? '🤖' : '👤';
+    avatar.setAttribute('aria-label', sender === 'bot' ? "Bot" : "User");
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    contentDiv.innerHTML = content;
+    messageDiv.appendChild(avatar);
+    messageDiv.appendChild(contentDiv);
+    chatArea.appendChild(messageDiv);
+    chatArea.scrollTop = chatArea.scrollHeight;
+    messageCount++;
+  }
+
+  function showTyping() {
+    const chatArea = document.getElementById('chatArea');
+    const typingDiv = document.createElement('div');
+    typingDiv.className = "typing-indicator active";
+    typingDiv.id = "typingIndicator";
+    typingDiv.innerHTML = '<span></span><span></span><span></span>';
+    chatArea.appendChild(typingDiv);
+    chatArea.scrollTop = chatArea.scrollHeight;
+  }
+
+  function hideTyping() {
+    const typing = document.getElementById('typingIndicator');
+    if (typing) typing.remove();
+  }
+
+  function handleKeyPress(event) {
+    if (event.key === "Enter") sendMessage();
+  }
+
+  function toggleMetrics() {
+    const dashboard = document.getElementById('metricsDashboard');
+    dashboard.classList.toggle('active');
+  }
+
+  function updateMetrics() {
+    document.getElementById('messageCount').textContent = messageCount;
+    document.getElementById('avgResponseTime').textContent = `${(0.5 + Math.random()).toFixed(1)}s`;
+    const escalationRate = Math.min(30, (escalationCount / Math.max(1, messageCount)) * 100);
+    document.getElementById('escalationRate').textContent = `${escalationRate.toFixed(0)}`;
+    const resolutionRate = Math.max(70, 100 - escalationRate);
+    document.getElementById('resolutionRate').textContent = `${resolutionRate.toFixed(0)}`;
+  }
+</script>
+</body>
+</html>
